@@ -127,13 +127,14 @@ h2{font-size:20px;margin:18px 0 8px}
   <div class="hint" id="hint" style="display:none"></div>
 
   <button class="big" id="start">Wypuść Bałaganka! 👾</button>
+  <button class="big green" id="install" style="display:none;font-size:19px">📲 Zainstaluj na telefonie</button>
 
   <h2>Uśpione potworki</h2>
   <div class="album" id="album"></div>
 
   <div class="toggle"><span>🗣️ Bałaganek mówi na głos</span><div class="sw" id="voiceSw"></div></div>
   <div class="toggle"><span>🎵 Muzyka i dźwięki</span><div class="sw" id="soundSw"></div></div>
-  <p class="sub" style="margin-top:14px;font-size:13px;text-align:center">Wersja testowa v2 · dane zostają na tym telefonie</p>
+  <p class="sub" style="margin-top:14px;font-size:13px;text-align:center">Wersja testowa v3 · dane zostają na tym telefonie</p>
 </div></section>
 
 <!-- GAME -->
@@ -453,6 +454,11 @@ function wakeOff(){try{game.wake&&game.wake.release();game.wake=null}catch(e){}}
 $("start").onclick=()=>{if(S.sel.length)startGame()};
 window.appBack=function(){ if($("ov").classList.contains("on")){return} if($("game").classList.contains("on")){$("quit").click();return} try{Android.exit()}catch(e){} };
 document.addEventListener("visibilitychange",()=>{ if(document.hidden&&$("game").classList.contains("on")&&!game.over&&!game.paused&&game.startT!==Infinity)$("pause").click() });
+// przycisk instalacji (Chrome na Androidzie)
+let instEv=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();instEv=e;$("install").style.display="block"});
+window.addEventListener("appinstalled",()=>{instEv=null;$("install").style.display="none"});
+$("install").onclick=async()=>{if(!instEv)return;try{instEv.prompt();await instEv.userChoice}catch(e){}instEv=null;$("install").style.display="none"};
 renderHome();
 // automatyczne aktualizacje (działa na GitHub Pages)
 if("serviceWorker" in navigator&&location.protocol==="https:"&&/github\.io$/.test(location.hostname)){navigator.serviceWorker.register("sw.js").catch(()=>{})}
