@@ -134,7 +134,12 @@ h2{font-size:20px;margin:18px 0 8px}
 
   <div class="toggle"><span>🗣️ Bałaganek mówi na głos</span><div class="sw" id="voiceSw"></div></div>
   <div class="toggle"><span>🎵 Muzyka i dźwięki</span><div class="sw" id="soundSw"></div></div>
-  <p class="sub" style="margin-top:14px;font-size:13px;text-align:center">Wersja testowa v3 · dane zostają na tym telefonie</p>
+  <div class="toggle"><span>🔊 Głośność muzyki</span><input type="range" id="vol" min="20" max="100" step="5" style="width:45%;accent-color:#FF7A45"></div>
+  <h2>Głos potworka</h2>
+  <div class="row" id="vstyles"></div>
+  <div class="row" id="vnames" style="margin-top:8px"></div>
+  <button class="pill" id="vtest" style="margin-top:8px">▶ Posłuchaj</button>
+  <p class="sub" style="margin-top:14px;font-size:13px;text-align:center">Wersja testowa v4 · dane zostają na tym telefonie</p>
 </div></section>
 
 <!-- GAME -->
@@ -179,6 +184,7 @@ const PRESETS=[[2,"Szybkie"],[3,"3 min"],[5,"5 min"],[8,"Pokój"],[10,"10 min"],
 function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 let S=load("bk_set",{sel:["klocki","autka","pluszaki"],custom:[],min:5,voice:true,sound:true});
+if(S.vol==null)S.vol=90;if(!S.vstyle)S.vstyle="potwor";
 let G=load("bk_game",{stars:0,stickers:{},hist:{},wins:0});
 const allCats=()=>CATS.concat(S.custom.map(n=>({id:"c_"+n,n:n,e:["📦","🎁","📦"],m:null})));
 const $=id=>document.getElementById(id);
@@ -221,11 +227,12 @@ function monSVG(color,mood){
 const SLOTS=[[150,24],[106,36],[194,36],[62,66],[238,66],[36,116],[264,116],[30,166],[270,166],[44,214],[256,214],[82,250],[218,250],[150,262],[120,256],[180,256],[150,58],[74,110],[226,110],[60,150],[240,150],[72,196],[228,196],[150,232]];
 
 // ---------- Dźwięk ----------
-let AC=null,master=null;
-function audio(){ if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=.55;master.connect(AC.destination)}catch(e){}} if(AC&&AC.state==="suspended")AC.resume(); return AC}
-function tone(f,t,d,type="triangle",v=.25){ if(!AC||!S.sound)return; const o=AC.createOscillator(),g=AC.createGain(); o.type=type;o.frequency.value=f; g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+d); o.connect(g);g.connect(master);o.start(t);o.stop(t+d+.05)}
-function noise(t,d,v=.12,hp=6000){ if(!AC||!S.sound)return; const b=AC.createBuffer(1,AC.sampleRate*d,AC.sampleRate),a=b.getChannelData(0); for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1; const s=AC.createBufferSource();s.buffer=b; const f=AC.createBiquadFilter();f.type="highpass";f.frequency.value=hp; const g=AC.createGain();g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d); s.connect(f);f.connect(g);g.connect(master);s.start(t)}
-function kick(t){ if(!AC||!S.sound)return; const o=AC.createOscillator(),g=AC.createGain(); o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(45,t+.15); g.gain.setValueAtTime(.5,t);g.gain.exponentialRampToValueAtTime(.001,t+.2); o.connect(g);g.connect(master);o.start(t);o.stop(t+.25)}
+let AC=null,master=null,musBus=null,bus=null;
+const musVol=()=>Math.pow((S.vol==null?90:S.vol)/100,1.5)*1.6;
+function audio(){ if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();const comp=AC.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=4;comp.connect(AC.destination);master=AC.createGain();master.gain.value=1.3;master.connect(comp);musBus=AC.createGain();musBus.gain.value=musVol();musBus.connect(master)}catch(e){}} if(AC&&AC.state==="suspended")AC.resume(); return AC}
+function tone(f,t,d,type="triangle",v=.25){ if(!AC||!S.sound)return; const o=AC.createOscillator(),g=AC.createGain(); o.type=type;o.frequency.value=f; g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+d); o.connect(g);g.connect(bus||master);o.start(t);o.stop(t+d+.05)}
+function noise(t,d,v=.12,hp=6000){ if(!AC||!S.sound)return; const b=AC.createBuffer(1,AC.sampleRate*d,AC.sampleRate),a=b.getChannelData(0); for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1; const s=AC.createBufferSource();s.buffer=b; const f=AC.createBiquadFilter();f.type="highpass";f.frequency.value=hp; const g=AC.createGain();g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d); s.connect(f);f.connect(g);g.connect(bus||master);s.start(t)}
+function kick(t){ if(!AC||!S.sound)return; const o=AC.createOscillator(),g=AC.createGain(); o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(45,t+.15); g.gain.setValueAtTime(.5,t);g.gain.exponentialRampToValueAtTime(.001,t+.2); o.connect(g);g.connect(bus||master);o.start(t);o.stop(t+.25)}
 const mid=n=>440*Math.pow(2,(n-69)/12);
 function sfxPop(){audio();const t=AC?AC.currentTime:0;[72,76,79,84].forEach((n,i)=>tone(mid(n),t+i*.07,.18,"square",.12))}
 function sfxUndo(){audio();const t=AC?AC.currentTime:0;[79,72].forEach((n,i)=>tone(mid(n),t+i*.1,.15,"triangle",.15))}
@@ -244,6 +251,7 @@ function musStop(){ mus.on=false; clearInterval(mus.timer) }
 function musTick(){
   if(!mus.on||!AC)return;
   const f=game.frac(), ph=phaseOf(f), tr=[0,2,3,5][ph];
+  bus=musBus;
   while(mus.next<AC.currentTime+.12){
     const t=mus.next, s=mus.step, sec=60/bpmOf(f)/2; // ósemki
     const root=48+tr;
@@ -254,6 +262,7 @@ function musTick(){
     if(ph>=3){ noise(t,.03,.1,9000); if(s%4===2) tone(mid(84+tr+m),t,sec*.5,"square",.05) }
     mus.next+=sec; mus.step++;
   }
+  bus=null;
 }
 
 // ---------- Głos ----------
@@ -261,10 +270,33 @@ let plVoice=null;
 function pickVoice(){try{const v=speechSynthesis.getVoices();plVoice=v.find(x=>/^pl/i.test(x.lang))||null}catch(e){}}
 try{pickVoice();speechSynthesis.onvoiceschanged=pickVoice}catch(e){}
 let bubT=null;
+// style głosu potworka: wysokość i tempo mowy + odgłos przed mówieniem
+const VSTYLES={
+ potwor:{n:"👹 Potworny",p:.3,r:.85,g:"growl"},
+ grubas:{n:"🐻 Mruczący",p:.55,r:.75,g:"growl"},
+ pisk:{n:"🐭 Piskliwy",p:1.9,r:1.15,g:"chirp"},
+ robot:{n:"🤖 Robot",p:.8,r:.8,g:"robot"},
+ zwykly:{n:"🙂 Zwykły",p:1.2,r:1,g:null}
+};
+function plVoices(){try{return speechSynthesis.getVoices().filter(x=>/^pl/i.test(x.lang))}catch(e){return[]}}
+function growl(kind){
+  audio(); if(!AC||!S.sound||!kind)return; const t=AC.currentTime;
+  if(kind==="growl"){ // niskie warczenie „grrr”
+    const o=AC.createOscillator(),lf=AC.createOscillator(),lg=AC.createGain(),f=AC.createBiquadFilter(),g=AC.createGain();
+    o.type="sawtooth";o.frequency.setValueAtTime(95,t);o.frequency.linearRampToValueAtTime(65,t+.45);
+    lf.frequency.value=28;lg.gain.value=.5;lf.connect(lg);lg.connect(g.gain);
+    f.type="lowpass";f.frequency.value=700;g.gain.setValueAtTime(.5,t);g.gain.linearRampToValueAtTime(0,t+.5);
+    o.connect(f);f.connect(g);g.connect(master);o.start(t);lf.start(t);o.stop(t+.55);lf.stop(t+.55);
+  }else if(kind==="chirp"){[0,.09,.18].forEach((d,i)=>{const o=AC.createOscillator(),g=AC.createGain();o.type="sine";o.frequency.setValueAtTime(1200+i*300,t+d);o.frequency.exponentialRampToValueAtTime(2200+i*300,t+d+.07);g.gain.setValueAtTime(.2,t+d);g.gain.exponentialRampToValueAtTime(.001,t+d+.08);o.connect(g);g.connect(master);o.start(t+d);o.stop(t+d+.1)})}
+  else if(kind==="robot"){[0,.1,.2].forEach((d,i)=>tone([440,660,330][i],t+d,.08,"square",.15))}
+}
+let speakT=null;
 function say(txt,ms=2600){
-  const b=$("bubble"); b.textContent=txt; b.classList.add("on"); clearTimeout(bubT); bubT=setTimeout(()=>b.classList.remove("on"),ms);
+  const b=$("bubble"); if(b){b.textContent=txt; b.classList.add("on"); clearTimeout(bubT); bubT=setTimeout(()=>b.classList.remove("on"),ms)}
   if(!S.voice)return;
-  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(txt);u.lang="pl-PL";if(plVoice)u.voice=plVoice;u.pitch=1.6;u.rate=1.05;u.volume=1;speechSynthesis.speak(u)}catch(e){}
+  const st=VSTYLES[S.vstyle]||VSTYLES.potwor;
+  growl(st.g); clearTimeout(speakT);
+  speakT=setTimeout(()=>{try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(txt);u.lang="pl-PL";const vs=plVoices();const v=vs.find(x=>x.name===S.vname)||plVoice;if(v)u.voice=v;u.pitch=st.p;u.rate=st.r;u.volume=1;speechSynthesis.speak(u)}catch(e){}},st.g?380:0);
 }
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 // losowanie bez powtórek: kwestia nie wraca, dopóki nie padnie kilka innych
@@ -317,6 +349,9 @@ function renderHome(){
   if(h){const sug=Math.min(30,Math.ceil(h/60)+1);$("hint").style.display="flex";$("hint").innerHTML=`<span>Ostatnio z tym zestawem: <b>${fmt(h)}</b></span>${sug!==S.min?`<button data-sug="${sug}">Ustaw ${sug} min</button>`:""}`}
   else $("hint").style.display="none";
   $("album").innerHTML=MONS.map(m=>{const c=G.stickers[m.n]||0;return `<div class="st ${c?"":"no"}" title="${m.n}">${monSVG(m.c,"sleep").replace("<svg","<svg width='52' height='52'")}${c>1?`<i>×${c}</i>`:""}</div>`}).join("");
+  $("vol").value=S.vol;
+  $("vstyles").innerHTML=Object.entries(VSTYLES).map(([k,v])=>`<button class="pill ${S.vstyle===k?"sel":""}" data-v="${k}">${v.n}</button>`).join("");
+  const vs=plVoices(); $("vnames").innerHTML=vs.length>1?vs.map((v,i)=>`<button class="pill ${(S.vname?S.vname===v.name:i===0)?"sel":""}" data-n="${i}">Głos ${i+1}</button>`).join(""):"";
   $("voiceSw").classList.toggle("on",S.voice);$("soundSw").classList.toggle("on",S.sound);
   $("start").disabled=!S.sel.length;$("start").style.opacity=S.sel.length?1:.5;
   save("bk_set",S);
@@ -329,6 +364,13 @@ $("plus").onclick=()=>{S.min=Math.min(30,S.min+1);renderHome()};
 $("hint").onclick=e=>{const b=e.target.closest("[data-sug]");if(b){S.min=+b.dataset.sug;renderHome()}};
 $("voiceSw").onclick=()=>{S.voice=!S.voice;renderHome()};
 $("soundSw").onclick=()=>{S.sound=!S.sound;renderHome()};
+$("vol").oninput=e=>{S.vol=+e.target.value;save("bk_set",S);if(musBus)musBus.gain.value=musVol()};
+$("vol").onchange=()=>{audio();if(!AC)return;bus=musBus;const t=AC.currentTime;[0,4,7].forEach((n,i)=>tone(mid(72+n),t+i*.12,.25,"triangle",.14));bus=null};
+const testLines=["Grrr! Jestem Bałaganek i uwielbiam bałagan!","Ha ha! Tego bałaganu nikt nie posprząta!","Oddawajcie moje klocki!"];
+$("vstyles").onclick=e=>{const b=e.target.closest("[data-v]");if(!b)return;S.vstyle=b.dataset.v;renderHome();say(pick(testLines))};
+$("vnames").onclick=e=>{const b=e.target.closest("[data-n]");if(!b)return;const v=plVoices()[+b.dataset.n];if(v)S.vname=v.name;renderHome();say(pick(testLines))};
+$("vtest").onclick=()=>say(pick(testLines));
+try{speechSynthesis.addEventListener("voiceschanged",()=>{if($("home").classList.contains("on"))renderHome()})}catch(e){}
 
 // ---------- Gra ----------
 const game={
