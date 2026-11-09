@@ -104,6 +104,17 @@ h2{font-size:20px;margin:18px 0 8px}
 .sheet .st{font-size:34px;letter-spacing:2px;margin:6px 0}
 .confetti{position:fixed;top:-20px;font-size:24px;z-index:50;pointer-events:none;animation:fall linear forwards}
 @keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+.dots{display:flex;gap:14px;justify-content:center;margin:12px 0}
+.dots i{width:18px;height:18px;border-radius:50%;border:3px solid var(--ink);display:block}
+.dots i.f{background:var(--ink)}
+.dots.bad{animation:shake .12s 4}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:10px;justify-content:center}
+.pad button{height:62px;border-radius:18px;background:#fff;font-size:28px;font-weight:800;box-shadow:0 3px 0 var(--line)}
+.pad button:active{transform:translateY(2px)}
+.rev{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px;max-height:45vh;overflow-y:auto}
+.rv{display:flex;justify-content:space-between;align-items:center;background:#E9F7EF;border-radius:14px;padding:10px 14px;font-weight:700;font-size:17px;border:3px solid transparent}
+.rv.no{background:#FFE8E3;border-color:#FF7A45}
+.rv b{font-size:14px}
 .wrapmax{max-width:560px;width:100%;margin:0 auto;display:flex;flex-direction:column;flex:1}
 </style>
 </head>
@@ -135,11 +146,13 @@ h2{font-size:20px;margin:18px 0 8px}
   <div class="toggle"><span>🗣️ Bałaganek mówi na głos</span><div class="sw" id="voiceSw"></div></div>
   <div class="toggle"><span>🎵 Muzyka i dźwięki</span><div class="sw" id="soundSw"></div></div>
   <div class="toggle"><span>🔊 Głośność muzyki</span><input type="range" id="vol" min="20" max="100" step="5" style="width:45%;accent-color:#FF7A45"></div>
+  <div class="toggle"><span>🔒 Rodzic zatwierdza PIN-em</span><div class="sw" id="pinSw"></div></div>
+  <button class="pill" id="pinChange" style="margin-top:8px">Zmień PIN</button>
   <h2>Głos potworka</h2>
   <div class="row" id="vstyles"></div>
   <div class="row" id="vnames" style="margin-top:8px"></div>
   <button class="pill" id="vtest" style="margin-top:8px">▶ Posłuchaj</button>
-  <p class="sub" style="margin-top:14px;font-size:13px;text-align:center">Wersja testowa v4 · dane zostają na tym telefonie</p>
+  <p class="sub" style="margin-top:14px;font-size:13px;text-align:center">Wersja testowa v5 · dane zostają na tym telefonie</p>
 </div></section>
 
 <!-- GAME -->
@@ -172,7 +185,8 @@ const CATS=[
  {id:"ubrania",n:"Ubrania",e:["👕","🧦","👖"],m:"moje ubranka"},
  {id:"dinozaury",n:"Dinozaury",e:["🦖","🦕","🦖"],m:"moje dinozaury"},
  {id:"kuchnia",n:"Kuchenka",e:["🍳","🥄","🫖"],m:"moje garnuszki"},
- {id:"gry",n:"Gry",e:["🎲","🃏","🎮"],m:"moje gry"}
+ {id:"gry",n:"Gry",e:["🎲","🃏","🎮"],m:"moje gry"},
+ {id:"pociagi",n:"Tory i pociągi",e:["🚂","🛤️","🚃"],m:"moje pociągi"}
 ];
 const MONS=[
  {n:"Bałaganek",c:"#7BC74D"},{n:"Rozrzutek",c:"#9B6BE0"},{n:"Psotek",c:"#FF8A3D"},
@@ -314,7 +328,8 @@ const CAT_LINES={
  ubrania:["Skarpetki do szuflady? Lubię, jak leżą pojedynczo!","Ubranka na miejsce? A w co ja się przebiorę?"],
  dinozaury:["Moje dinozaury! Wyginęły... znowu!","Rrraaa! Dinozaury uciekły do pudełka!"],
  kuchnia:["Moja kuchenka! Właśnie gotowałem zupę z bałaganu!","Garnuszki na miejsce? A gdzie ugotuję obiad?"],
- gry:["Moje gry! Właśnie wygrywałem!","Kostki do pudełka? To koniec gry!"]
+ gry:["Moje gry! Właśnie wygrywałem!","Kostki do pudełka? To koniec gry!"],
+ pociagi:["Ciuch ciuch... moje pociągi odjechały do pudełka!","Kto rozebrał moje tory?! Teraz nikt nie dojedzie!","Ostatni pociąg do bałaganu właśnie odjechał!"]
 };
 const CAT_TPL=["O nie, {m}!","Oddawajcie {m}!","Hej! Gdzie zabieracie {m}?","Kto schował {m}?! Przyznać się!","Ej! {M} miały leżeć na podłodze!","{M} były najlepszą częścią bałaganu!"];
 const GEN_LINES=["Kurczę, kurczę... kurczę się!","Ojej, robię się coraz mniejszy!","Aaa! Co wy robicie?!","To nie fair! Sprzątacie za szybko!","Moja piękna kupka bałaganu!","Uuu, już nie jestem taki groźny...","Brrr, robi się tu czysto. Nie lubię tego!","Ha! I tak mam jeszcze inne zabawki!","Ała! Zostawcie moje rzeczy!","Hej! Bez bałaganu jest mi zimno!"];
@@ -350,6 +365,7 @@ function renderHome(){
   else $("hint").style.display="none";
   $("album").innerHTML=MONS.map(m=>{const c=G.stickers[m.n]||0;return `<div class="st ${c?"":"no"}" title="${m.n}">${monSVG(m.c,"sleep").replace("<svg","<svg width='52' height='52'")}${c>1?`<i>×${c}</i>`:""}</div>`}).join("");
   $("vol").value=S.vol;
+  $("pinSw").classList.toggle("on",!!(S.pinOn&&S.pin));$("pinChange").style.display=S.pinOn&&S.pin?"":"none";
   $("vstyles").innerHTML=Object.entries(VSTYLES).map(([k,v])=>`<button class="pill ${S.vstyle===k?"sel":""}" data-v="${k}">${v.n}</button>`).join("");
   const vs=plVoices(); $("vnames").innerHTML=vs.length>1?vs.map((v,i)=>`<button class="pill ${(S.vname?S.vname===v.name:i===0)?"sel":""}" data-n="${i}">Głos ${i+1}</button>`).join(""):"";
   $("voiceSw").classList.toggle("on",S.voice);$("soundSw").classList.toggle("on",S.sound);
@@ -397,7 +413,7 @@ function renderTiles(){
 }
 function startGame(){
   audio();
-  game.cats=allCats().filter(c=>S.sel.includes(c.id)); game.done=new Set(); game.total=S.min*60; game.over=false; game.paused=false; game.pausedSum=0; game.lastPhase=0; game.lastSec=99;
+  game.cats=allCats().filter(c=>S.sel.includes(c.id)); game.done=new Set(); game.total=S.min*60; game.over=false; game.awaiting=false; game.paused=false; game.pausedSum=0; game.lastPhase=0; game.lastSec=99;
   game.mon=curMon();
   show("game"); $("bed").classList.remove("on"); $("zzz").classList.remove("on"); document.body.classList.remove("fast");
   $("mwrap").style.transition="none"; $("mwrap").style.transform="scale(1) translateY(0)"; $("mwrap").offsetWidth; $("mwrap").style.transition="";
@@ -441,7 +457,7 @@ function flyToys(catId,tileEl){
   });
 }
 $("tiles").onclick=e=>{
-  const b=e.target.closest(".tile"); if(!b||game.over||game.paused||game.startT===Infinity)return;
+  const b=e.target.closest(".tile"); if(!b||game.over||game.paused||game.awaiting||game.startT===Infinity)return;
   const id=b.dataset.id, c=game.cats.find(x=>x.id===id);
   if(game.done.has(id)){ // cofnięcie
     game.done.delete(id); $("mwrap").querySelectorAll(`.toy[data-cat="${CSS.escape(id)}"]`).forEach(el=>el.classList.remove("gone"));
@@ -451,28 +467,58 @@ $("tiles").onclick=e=>{
   const nb=$("tiles").querySelector(`[data-id="${CSS.escape(id)}"]`); nb&&nb.classList.add("pulse");
   setTimeout(scaleMon,350);
   const left=game.cats.length-game.done.size;
-  if(left===0){ setMood("scared"); say(fresh(["Nieee... jestem taki malutki... chyba się zdrzemnę...","Wygraliście... Ziew... idę spać do pudełka...","No dobra, dobra... posprzątane. Dobranoc!"]),3000); setTimeout(win,1400); return }
+  if(left===0){ allDone(); return }
   setMood(left<=1?"scared":"worried");
   say(doneLine(c,left),2800);
 };
 $("pause").onclick=()=>{
-  if(game.over||game.startT===Infinity)return;
+  if(game.over||game.awaiting||game.startT===Infinity)return;
   if(!game.paused){game.paused=true;game.pauseAt=performance.now();musStop();$("pause").textContent="▶ Graj dalej";say("Pauza! Odpoczywam w bałaganie...")}
   else{game.pausedSum+=performance.now()-game.pauseAt;game.paused=false;musStart();$("pause").textContent="⏸ Pauza"}
 };
-$("quit").onclick=()=>{ if(game.over)return; if(!game.paused)$("pause").click(); sheet(`<h2>Zakończyć zabawę?</h2><p class="sub">Gwiazdki za tę rundę przepadną.</p><button class="big" id="q1">Tak, zakończ</button><button class="link" id="q2">Grajmy dalej</button>`); $("q1").onclick=()=>{end();closeSheet();show("home");renderHome()}; $("q2").onclick=()=>{closeSheet();$("pause").click()} };
+$("quit").onclick=()=>{ if(game.over||game.awaiting)return; if(!game.paused)$("pause").click(); sheet(`<h2>Zakończyć zabawę?</h2><p class="sub">Gwiazdki za tę rundę przepadną.</p><button class="big" id="q1">Tak, zakończ</button><button class="link" id="q2">Grajmy dalej</button>`); $("q1").onclick=()=>{end();closeSheet();show("home");renderHome()}; $("q2").onclick=()=>{closeSheet();$("pause").click()} };
 function end(){game.over=true;cancelAnimationFrame(game.raf);musStop();document.body.classList.remove("fast");wakeOff()}
-function win(){
-  const used=game.elapsed(); end(); setMood("sleep"); $("zzz").classList.add("on"); sfxFanfare(); confetti();
+// Wszystko odhaczone: czas staje, potworek zasypia, dzieci wołają rodzica
+function allDone(){
+  game.awaiting=true; game.usedAt=game.elapsed(); game.paused=true; game.pauseAt=performance.now(); musStop();
+  setMood("scared"); say(fresh(["Nieee... jestem taki malutki... chyba się zdrzemnę...","Wygraliście... Ziew... idę spać do pudełka...","No dobra, dobra... posprzątane. Dobranoc!"]),3000);
+  setTimeout(()=>{setMood("sleep");$("zzz").classList.add("on");sfxFanfare()},1400);
+  setTimeout(callParent,2700);
+}
+function callParent(){
+  sheet(`<h2>Wszystko odhaczone! 🎉</h2><p class="sub">Czas stanął na <b>${fmt(game.usedAt)}</b> z ${fmt(game.total)}. ${game.mon.n} śpi w pudełku.</p>
+    <div style="font-size:64px;line-height:1.2">🧑‍🦰👀</div><p style="font-weight:800;font-size:21px;margin:2px 0">Zawołajcie rodzica,<br>niech sprawdzi pokój!</p>
+    <button class="big green" id="c1">Jestem rodzicem – sprawdzam</button>`);
+  $("c1").onclick=review;
+}
+function review(){
+  const bad=new Set();
+  const draw=()=>{
+    sheet(`<h2>Sprawdź pokój 👀</h2><p class="sub">Stuknij to, co jeszcze nie jest posprzątane</p>
+      <div class="rev" id="rev">${game.cats.map(c=>`<button class="rv ${bad.has(c.id)?"no":""}" data-id="${c.id}"><span>${c.e[0]} ${c.n}</span><b>${bad.has(c.id)?"❌ jeszcze leży":"✅ gotowe"}</b></button>`).join("")}</div>
+      ${bad.size?`<button class="big" id="r2">Wracamy do sprzątania (${bad.size})</button>`:`<button class="big green" id="r1">Zatwierdzam – dajemy nagrodę</button>`}`);
+    $("rev").onclick=e=>{const b=e.target.closest("[data-id]");if(!b)return;const id=b.dataset.id;bad.has(id)?bad.delete(id):bad.add(id);draw()};
+    if($("r1"))$("r1").onclick=()=>checkPin("Zatwierdź nagrodę",approve,draw);
+    if($("r2"))$("r2").onclick=()=>checkPin("Wracamy do sprzątania",()=>backToWork(bad),draw);
+  };
+  draw();
+}
+function approve(){
+  const used=game.usedAt; end(); confetti(); sfxFanfare();
   const saved=Math.floor((game.total-used)/60), bonus=Math.min(5,Math.max(0,saved)), stars=3+bonus;
-  setTimeout(()=>{
-    sheet(`<h2>Bałagan pokonany! 🎉</h2><p class="sub">${game.mon.n} zasnął w pudełku. Czas: <b>${fmt(used)}</b> z ${fmt(game.total)}</p>
-      <div class="st">${"⭐".repeat(stars)}</div><p class="sub">${bonus?`3 gwiazdki + ${bonus} za ${bonus===1?"zaoszczędzoną minutę":"zaoszczędzone minuty"}`:"3 gwiazdki za posprzątanie"}</p>
-      <p style="font-weight:800;margin:14px 0 0">Rodzicu, sprawdź pokój 👀</p>
-      <button class="big green" id="w1">Sprawdzone! Dajemy nagrodę</button><button class="link" id="w2">Jeszcze nie wszystko – bez nagrody</button>`);
-    $("w1").onclick=()=>{G.stars+=stars;G.stickers[game.mon.n]=(G.stickers[game.mon.n]||0)+1;G.wins++;G.hist[keyOf()]=Math.round(used);save("bk_game",G);closeSheet();show("home");renderHome()};
-    $("w2").onclick=()=>{closeSheet();show("home");renderHome()};
-  },2200);
+  G.stars+=stars;G.stickers[game.mon.n]=(G.stickers[game.mon.n]||0)+1;G.wins++;G.hist[keyOf()]=Math.round(used);save("bk_game",G);
+  sheet(`<h2>Bałagan pokonany! 🎉</h2><p class="sub">Rodzic sprawdził i zatwierdził. ${game.mon.n} trafia do albumu!</p>
+    <div style="width:110px;height:110px;margin:4px auto">${monSVG(game.mon.c,"sleep")}</div>
+    <div class="st">${"⭐".repeat(stars)}</div><p class="sub">${bonus?`3 gwiazdki + ${bonus} za ${bonus===1?"zaoszczędzoną minutę":"zaoszczędzone minuty"}`:"3 gwiazdki za posprzątanie"}</p>
+    <button class="big green" id="a1">Super!</button>`);
+  $("a1").onclick=()=>{closeSheet();show("home");renderHome()};
+}
+function backToWork(bad){
+  closeSheet(); game.awaiting=false; $("zzz").classList.remove("on");
+  bad.forEach(id=>{game.done.delete(id);$("mwrap").querySelectorAll(`.toy[data-cat="${CSS.escape(id)}"]`).forEach(el=>el.classList.remove("gone"))});
+  renderTiles(); scaleMon(); setMood("cocky"); sfxUndo();
+  say(fresh(["Ha! Rodzic znalazł bałagan! Rosnę!","Hi hi! Nie wszystko posprzątane! Wracam!","Jupi! Jeszcze tu jestem!"]),2800);
+  game.pausedSum+=performance.now()-game.pauseAt; game.paused=false; musStart();
 }
 function lose(){
   end(); $("clock").textContent="0:00"; setMood("cocky"); say(fresh(["Ha! Uciekam pod łóżko! Wrócę jutro!","Hi hi! Nie zdążyliście! Chowam się pod łóżko!","Do zobaczenia jutro! Będę czekał pod łóżkiem!"]),3000); sfxLose();
@@ -488,12 +534,48 @@ function lose(){
   },2600);
 }
 function confetti(){for(let i=0;i<30;i++){const c=document.createElement("span");c.className="confetti";c.textContent=pick(["🎉","⭐","✨","🎊","💫"]);c.style.left=Math.random()*100+"vw";c.style.animationDuration=(1.8+Math.random()*1.8)+"s";c.style.animationDelay=Math.random()*.6+"s";document.body.appendChild(c);setTimeout(()=>c.remove(),4500)}}
+// ---------- PIN rodzica ----------
+function pinPad(o){
+  let v=""; const len=o.len||4;
+  sheet(`<h2>${o.title}</h2><p class="sub">${o.sub||""}</p><div class="dots" id="dots"></div>
+    <div class="pad" id="pad">${["1","2","3","4","5","6","7","8","9","x","0","⌫"].map(k=>`<button data-k="${k}" ${k==="x"?"style='visibility:hidden'":""}>${k}</button>`).join("")}</div>
+    <p class="sub" id="pinErr" style="color:#D9502F;min-height:24px;font-weight:700"></p>
+    ${o.forgot?`<button class="link" id="pinF">Nie pamiętam PIN-u</button><br>`:""}${o.cancel?`<button class="link" id="pinX">Anuluj</button>`:""}`);
+  const draw=()=>{$("dots").innerHTML=Array.from({length:len},(_,i)=>`<i class="${i<v.length?"f":""}"></i>`).join("")}; draw();
+  $("pad").onclick=e=>{const b=e.target.closest("[data-k]");if(!b)return;const k=b.dataset.k;if(k==="x")return;
+    if(k==="⌫")v=v.slice(0,-1);else if(v.length<len)v+=k;draw();
+    if(v.length===len){ if(o.check(v)){o.ok(v)} else {$("pinErr").textContent=o.err||"Zły PIN, spróbuj jeszcze raz";$("dots").classList.add("bad");setTimeout(()=>{v="";draw();$("dots").classList.remove("bad")},450)} }};
+  if(o.cancel)$("pinX").onclick=o.cancel;
+  if(o.forgot)$("pinF").onclick=o.forgot;
+}
+function checkPin(title,ok,cancel){
+  if(!S.pinOn||!S.pin){ok();return}
+  pinPad({title,sub:"Wpisz PIN rodzica",check:v=>v===S.pin,ok:()=>ok(),cancel,forgot:()=>adultGate(()=>setNewPin(ok,cancel),cancel)});
+}
+function adultGate(ok,cancel){
+  const a=6+Math.floor(Math.random()*4),b=6+Math.floor(Math.random()*4);
+  pinPad({title:`Ile to ${a} × ${b}?`,sub:"Pytanie dla dorosłych – potem ustawisz nowy PIN",len:2,err:"Niestety źle",check:v=>+v===a*b,ok:()=>ok(),cancel});
+}
+function setNewPin(ok,cancel){
+  pinPad({title:"Ustaw PIN rodzica",sub:"4 cyfry, których dzieci nie znają",check:()=>true,cancel,ok:first=>{
+    pinPad({title:"Powtórz PIN",sub:"Wpisz te same 4 cyfry",err:"PIN-y się różnią, spróbuj jeszcze raz",check:v=>v===first,cancel,ok:v=>{S.pin=v;S.pinOn=true;save("bk_set",S);renderHome();ok()}});
+  }});
+}
+function firstPinThen(next){
+  if(S.pin||S.pinOn===false){next();return}
+  sheet(`<h2>🔒 PIN rodzica</h2><p class="sub" style="font-size:16px">Gdy dzieci odhaczą wszystko, czas się zatrzyma, a one muszą zawołać rodzica. Rodzic sprawdza pokój i zatwierdza nagrodę PIN-em, żeby dzieci nie zrobiły tego same.</p>
+    <button class="big green" id="p1">Ustaw PIN</button><button class="link" id="p2">Bez PIN-u (zatwierdzanie przyciskiem)</button>`);
+  $("p1").onclick=()=>setNewPin(()=>{closeSheet();next()},()=>firstPinThen(next));
+  $("p2").onclick=()=>{S.pinOn=false;save("bk_set",S);closeSheet();renderHome();next()};
+}
 function sheet(h){$("sheet").innerHTML=h;$("ov").classList.add("on")}
 function closeSheet(){$("ov").classList.remove("on")}
 function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id===id))}
 async function wakeOn(){try{game.wake=await navigator.wakeLock.request("screen")}catch(e){}}
 function wakeOff(){try{game.wake&&game.wake.release();game.wake=null}catch(e){}}
-$("start").onclick=()=>{if(S.sel.length)startGame()};
+$("start").onclick=()=>{if(S.sel.length)firstPinThen(startGame)};
+$("pinSw").onclick=()=>{ if(S.pinOn&&S.pin){checkPin("Wyłączyć PIN?",()=>{S.pinOn=false;save("bk_set",S);closeSheet();renderHome()},closeSheet)} else if(S.pin){S.pinOn=true;save("bk_set",S);renderHome()} else setNewPin(closeSheet,closeSheet) };
+$("pinChange").onclick=()=>checkPin("Zmiana PIN-u",()=>setNewPin(closeSheet,closeSheet),closeSheet);
 window.appBack=function(){ if($("ov").classList.contains("on")){return} if($("game").classList.contains("on")){$("quit").click();return} try{Android.exit()}catch(e){} };
 document.addEventListener("visibilitychange",()=>{ if(document.hidden&&$("game").classList.contains("on")&&!game.over&&!game.paused&&game.startT!==Infinity)$("pause").click() });
 // przycisk instalacji (Chrome na Androidzie)
