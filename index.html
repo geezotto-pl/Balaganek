@@ -115,6 +115,13 @@ h2{font-size:20px;margin:18px 0 8px}
 .rv{display:flex;justify-content:space-between;align-items:center;background:#E9F7EF;border-radius:14px;padding:10px 14px;font-weight:700;font-size:17px;border:3px solid transparent}
 .rv.no{background:#FFE8E3;border-color:#FF7A45}
 .rv b{font-size:14px}
+.plist{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.prow{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:6px 10px;box-shadow:0 2px 0 var(--line)}
+.prow .e{font-size:26px}.prow .n{flex:1;font-weight:700}
+.prow.off{opacity:.45}
+.prow button{background:#FFF0E8;border-radius:999px;padding:4px 12px;font-weight:700;font-size:14px}
+.prow.off button.vis{background:#E9F7EF}
+#emojiPick .pill{padding:4px 10px;font-size:22px}
 .wrapmax{max-width:560px;width:100%;margin:0 auto;display:flex;flex-direction:column;flex:1}
 </style>
 </head>
@@ -130,7 +137,7 @@ h2{font-size:20px;margin:18px 0 8px}
 
   <h2>1. Co jest do posprzątania?</h2>
   <div class="grid" id="cats"></div>
-  <div class="add"><input id="newCat" maxlength="16" placeholder="Inna rzecz, np. „Klocki Lego”"><button id="addCat">+ Dodaj</button></div>
+  <p class="sub" style="font-size:14px;margin-top:6px">Brakuje czegoś? Dodasz to w ⚙️ Strefie rodzica.</p>
 
   <h2>2. Ile czasu dajesz?</h2>
   <div class="row" id="presets"></div>
@@ -143,16 +150,39 @@ h2{font-size:20px;margin:18px 0 8px}
   <h2>Uśpione potworki</h2>
   <div class="album" id="album"></div>
 
+  <button class="big" id="toParent" style="background:#fff;color:var(--ink);box-shadow:0 5px 0 var(--line);font-size:19px">⚙️ Strefa rodzica</button>
+  <p class="sub" style="margin-top:14px;font-size:13px;text-align:center">Wersja testowa v7 · dane zostają na tym telefonie</p>
+</div></section>
+
+<!-- STREFA RODZICA -->
+<section class="screen" id="parent"><div class="wrapmax">
+  <div class="top"><button class="pill" id="parentBack">← Wróć</button><h1 style="font-size:24px">Strefa rodzica</h1></div>
+
+  <h2>📦 Kategorie do sprzątania</h2>
+  <p class="sub" style="font-size:14px">Ukryj te, których nie używacie. Własne możesz usunąć.</p>
+  <div class="plist" id="plist"></div>
+  <div class="add"><input id="newCat" maxlength="16" placeholder="Nowa, np. „Klocki Lego”"><button id="addCat">+ Dodaj</button></div>
+  <div class="row" id="emojiPick" style="margin-top:8px"></div>
+  <p class="sub" id="addMsg" style="color:#D9502F;font-weight:700;min-height:20px;font-size:14px"></p>
+
+  <h2>🔒 Zatwierdzanie</h2>
+  <div class="toggle"><span>🔒 Rodzic zatwierdza PIN-em</span><div class="sw" id="pinSw"></div></div>
+  <button class="pill" id="pinChange" style="margin-top:8px">Zmień PIN</button>
+
+  <h2>🎵 Dźwięk i głos</h2>
   <div class="toggle"><span>🗣️ Bałaganek mówi na głos</span><div class="sw" id="voiceSw"></div></div>
   <div class="toggle"><span>🎵 Muzyka i dźwięki</span><div class="sw" id="soundSw"></div></div>
   <div class="toggle"><span>🔊 Głośność muzyki</span><input type="range" id="vol" min="20" max="100" step="5" style="width:45%;accent-color:#FF7A45"></div>
-  <div class="toggle"><span>🔒 Rodzic zatwierdza PIN-em</span><div class="sw" id="pinSw"></div></div>
-  <button class="pill" id="pinChange" style="margin-top:8px">Zmień PIN</button>
-  <h2>Głos potworka</h2>
+  <p style="font-weight:800;margin:14px 0 6px">Głos potworka</p>
   <div class="row" id="vstyles"></div>
   <div class="row" id="vnames" style="margin-top:8px"></div>
   <button class="pill" id="vtest" style="margin-top:8px">▶ Posłuchaj</button>
-  <p class="sub" style="margin-top:14px;font-size:13px;text-align:center">Wersja testowa v6 · dane zostają na tym telefonie</p>
+
+  <h2>⭐ Postępy</h2>
+  <div class="toggle"><span id="progInfo">⭐ 0 · naklejki: 0</span></div>
+  <button class="pill" id="resetStars" style="margin-top:8px">🗑 Wyzeruj gwiazdki i naklejki</button>
+  <button class="pill" id="resetHist" style="margin-top:8px">🕒 Wyczyść zapamiętane czasy</button>
+  <p class="sub" style="margin-top:18px;font-size:13px;text-align:center">Dane zostają na tym telefonie</p>
 </div></section>
 
 <!-- GAME -->
@@ -200,7 +230,15 @@ function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 let S=load("bk_set",{sel:["klocki","autka","pluszaki"],custom:[],min:5,voice:true,sound:true});
 if(S.vol==null)S.vol=90;if(!S.vstyle)S.vstyle="potwor";
 let G=load("bk_game",{stars:0,stickers:{},hist:{},wins:0});
-const allCats=()=>CATS.concat(S.custom.map(n=>({id:"c_"+n,n:n,e:["📦","🎁","📦"],m:null})));
+S.custom=(S.custom||[]).map(x=>typeof x==="string"?{n:x,e:"📦"}:x); if(!S.hidden)S.hidden=[];
+const allCats=()=>CATS.concat(S.custom.map(c=>({id:"c_"+c.n,n:c.n,e:[c.e,c.e,c.e],m:null,custom:true})));
+const visCats=()=>allCats().filter(c=>!S.hidden.includes(c.id));
+const norm=t=>t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ł/g,"l").replace(/\s+/g," ").trim();
+// sprzątanie duplikatów: własna kategoria o nazwie gotowej (np. „Pociągi”) jest zbędna
+(()=>{const dup=S.custom.filter((c,i,a)=>CATS.some(x=>norm(x.n)===norm(c.n))||a.findIndex(y=>norm(y.n)===norm(c.n))!==i);
+ dup.forEach(c=>{const b=CATS.find(x=>norm(x.n)===norm(c.n));S.sel=S.sel.map(x=>x==="c_"+c.n&&b?b.id:x)});
+ S.custom=S.custom.filter(c=>!dup.includes(c)); S.sel=[...new Set(S.sel)]})();
+const EMO=["📦","🧺","🎁","🪀","🪁","🎨","🎸","🛹","🏰","🧱","🚀","🦄","🐴","🧸","🪅","🎒"];
 const $=id=>document.getElementById(id);
 
 // ---------- Potwór (SVG) ----------
@@ -355,7 +393,7 @@ function curMon(){const i=G.wins%MONS.length;return MONS[i]}
 function renderHome(){
   $("starsTop").textContent="⭐ "+G.stars;
   $("heroMon").innerHTML=monSVG(curMon().c,"cocky");
-  const cats=allCats();
+  const cats=visCats();
   S.sel=S.sel.filter(id=>cats.some(c=>c.id===id));
   $("cats").innerHTML=cats.map(c=>`<button class="chip ${S.sel.includes(c.id)?"sel":""}" data-id="${c.id}"><span class="e">${c.e[0]}</span><span class="n">${c.n}</span></button>`).join("");
   $("presets").innerHTML=PRESETS.map(([m,l])=>`<button class="pill ${S.min===m?"sel":""}" data-m="${m}">${l}${l.includes("min")?"":" · "+m+" min"}</button>`).join("");
@@ -373,7 +411,34 @@ function renderHome(){
   save("bk_set",S);
 }
 $("cats").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;const id=b.dataset.id;S.sel=S.sel.includes(id)?S.sel.filter(x=>x!==id):S.sel.concat(id);if(S.sel.length>9){S.sel.shift()}renderHome()};
-$("addCat").onclick=()=>{const v=$("newCat").value.trim();if(!v)return;if(!S.custom.includes(v)){S.custom.push(v)}S.sel.push("c_"+v);$("newCat").value="";renderHome()};
+// ---------- Strefa rodzica ----------
+let newEmo="📦";
+function renderParent(){
+  renderHome();
+  $("plist").innerHTML=allCats().map(c=>{const off=S.hidden.includes(c.id);return `<div class="prow ${off?"off":""}"><span class="e">${c.e[0]}</span><span class="n">${c.n}${c.custom?" <small style='color:var(--soft)'>(własna)</small>":""}</span>${c.custom?`<button data-del="${c.id}">🗑 Usuń</button>`:`<button class="vis" data-vis="${c.id}">${off?"👁 Pokaż":"Ukryj"}</button>`}</div>`}).join("");
+  $("emojiPick").innerHTML=EMO.map(x=>`<button class="pill ${x===newEmo?"sel":""}" data-em="${x}">${x}</button>`).join("");
+  const nst=Object.values(G.stickers).reduce((a,b)=>a+b,0);
+  $("progInfo").textContent=`⭐ ${G.stars} gwiazdek · naklejki: ${nst} · zapamiętane czasy: ${Object.keys(G.hist).length}`;
+}
+$("toParent").onclick=()=>checkPin("Strefa rodzica",()=>{closeSheet();show("parent");$("parent").scrollTop=0;renderParent()},closeSheet);
+$("parentBack").onclick=()=>{show("home");renderHome()};
+$("plist").onclick=e=>{
+  const v=e.target.closest("[data-vis]"),d=e.target.closest("[data-del]");
+  if(v){const id=v.dataset.vis;S.hidden=S.hidden.includes(id)?S.hidden.filter(x=>x!==id):S.hidden.concat(id);renderParent()}
+  if(d){const id=d.dataset.del,c=allCats().find(x=>x.id===id);
+    sheet(`<h2>Usunąć „${c.n}”?</h2><p class="sub">Tej kategorii nie będzie już na liście.</p><button class="big" id="d1">Usuń</button><button class="link" id="d2">Anuluj</button>`);
+    $("d1").onclick=()=>{S.custom=S.custom.filter(x=>"c_"+x.n!==id);S.sel=S.sel.filter(x=>x!==id);closeSheet();renderParent()};$("d2").onclick=closeSheet}
+};
+$("emojiPick").onclick=e=>{const b=e.target.closest("[data-em]");if(b){newEmo=b.dataset.em;renderParent()}};
+$("addCat").onclick=()=>{
+  const v=$("newCat").value.trim(); if(!v)return;
+  const ex=allCats().find(c=>norm(c.n)===norm(v));
+  if(ex){ if(S.hidden.includes(ex.id)){S.hidden=S.hidden.filter(x=>x!==ex.id);$("addMsg").textContent=`„${ex.n}” już jest – pokazałem ją z powrotem.`} else $("addMsg").textContent=`„${ex.n}” już jest na liście.`; $("newCat").value="";renderParent();return }
+  S.custom.push({n:v,e:newEmo}); S.sel.push("c_"+v); $("newCat").value=""; $("addMsg").textContent=""; newEmo="📦"; renderParent();
+};
+$("resetStars").onclick=()=>{sheet(`<h2>Wyzerować postępy?</h2><p class="sub">Gwiazdki i wszystkie naklejki z albumu znikną. Tego nie da się cofnąć.</p><button class="big" id="z1">Tak, wyzeruj</button><button class="link" id="z2">Anuluj</button>`);
+  $("z1").onclick=()=>{G.stars=0;G.stickers={};G.wins=0;save("bk_game",G);closeSheet();renderParent()};$("z2").onclick=closeSheet};
+$("resetHist").onclick=()=>{G.hist={};save("bk_game",G);renderParent()};
 $("presets").onclick=e=>{const b=e.target.closest(".pill");if(!b)return;S.min=+b.dataset.m;renderHome()};
 $("minus").onclick=()=>{S.min=Math.max(1,S.min-1);renderHome()};
 $("plus").onclick=()=>{S.min=Math.min(30,S.min+1);renderHome()};
@@ -413,7 +478,7 @@ function renderTiles(){
 }
 function startGame(){
   audio();
-  game.cats=allCats().filter(c=>S.sel.includes(c.id)); game.done=new Set(); game.total=S.min*60; game.over=false; game.awaiting=false; game.paused=false; game.pausedSum=0; game.lastPhase=0; game.lastSec=99;
+  game.cats=visCats().filter(c=>S.sel.includes(c.id)); game.done=new Set(); game.total=S.min*60; game.over=false; game.awaiting=false; game.paused=false; game.pausedSum=0; game.lastPhase=0; game.lastSec=99;
   game.mon=curMon();
   show("game"); $("bed").classList.remove("on"); $("zzz").classList.remove("on"); document.body.classList.remove("fast");
   $("mwrap").style.transition="none"; $("mwrap").style.transform="scale(1) translateY(0)"; $("mwrap").offsetWidth; $("mwrap").style.transition="";
@@ -576,7 +641,7 @@ function wakeOff(){try{game.wake&&game.wake.release();game.wake=null}catch(e){}}
 $("start").onclick=()=>{if(S.sel.length)firstPinThen(startGame)};
 $("pinSw").onclick=()=>{ if(S.pinOn&&S.pin){checkPin("Wyłączyć PIN?",()=>{S.pinOn=false;save("bk_set",S);closeSheet();renderHome()},closeSheet)} else if(S.pin){S.pinOn=true;save("bk_set",S);renderHome()} else setNewPin(closeSheet,closeSheet) };
 $("pinChange").onclick=()=>checkPin("Zmiana PIN-u",()=>setNewPin(closeSheet,closeSheet),closeSheet);
-window.appBack=function(){ if($("ov").classList.contains("on")){return} if($("game").classList.contains("on")){$("quit").click();return} try{Android.exit()}catch(e){} };
+window.appBack=function(){ if($("ov").classList.contains("on")){return} if($("parent").classList.contains("on")){$("parentBack").click();return} if($("game").classList.contains("on")){$("quit").click();return} try{Android.exit()}catch(e){} };
 document.addEventListener("visibilitychange",()=>{ if(document.hidden&&$("game").classList.contains("on")&&!game.over&&!game.paused&&game.startT!==Infinity)$("pause").click() });
 // przycisk instalacji (Chrome na Androidzie)
 let instEv=null;
